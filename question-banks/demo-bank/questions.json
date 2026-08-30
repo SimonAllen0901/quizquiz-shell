@@ -1,0 +1,64 @@
+[
+  {
+    "id": "q001",
+    "type": "single",
+    "question": "HTTP `GET` 方法在規格語意上是否應該是 idempotent？",
+    "options": [
+      {
+        "id": "A",
+        "text": "是"
+      },
+      {
+        "id": "B",
+        "text": "否"
+      }
+    ],
+    "correctAnswers": ["A"],
+    "explanation": "`GET` 在 HTTP method semantics 中屬於 idempotent method。重複送出相同請求，不應改變伺服器資源狀態。",
+    "tags": ["http"]
+  },
+  {
+    "id": "q002",
+    "type": "multiple",
+    "question": "以下哪些屬於 JavaScript primitive types？",
+    "options": [
+      {
+        "id": "A",
+        "text": "`string`"
+      },
+      {
+        "id": "B",
+        "text": "`number`"
+      },
+      {
+        "id": "C",
+        "text": "`object`"
+      },
+      {
+        "id": "D",
+        "text": "`boolean`"
+      }
+    ],
+    "correctAnswers": ["A", "B", "D"],
+    "explanation": "`string`、`number` 與 `boolean` 都屬於 primitive types；`object` 不是 primitive type。",
+    "tags": ["javascript"]
+  },
+  {
+    "id": "q003",
+    "type": "single",
+    "question": "TypeScript 的 type annotation 會在瀏覽器執行時保留下來。",
+    "options": [
+      {
+        "id": "A",
+        "text": "正確"
+      },
+      {
+        "id": "B",
+        "text": "錯誤"
+      }
+    ],
+    "correctAnswers": ["B"],
+    "explanation": "TypeScript 需要先編譯成 JavaScript。type annotation 是靜態型別資訊，不會保留在瀏覽器執行的 JavaScript 中。",
+    "tags": ["typescript"]
+  }
+]

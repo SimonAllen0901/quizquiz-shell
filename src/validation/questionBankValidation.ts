@@ -1,6 +1,6 @@
-import type { QuestionBank } from "../domain/questionBank";
-import { manifestSchema, type Manifest } from "../schemas/manifest";
-import { questionsSchema, type Question } from "../schemas/question";
+import type { QuestionBank } from "../domain/questionBank.ts";
+import { manifestSchema, type Manifest } from "../schemas/manifest.ts";
+import { questionsSchema, type Question } from "../schemas/question.ts";
 
 export interface QuestionPackSource {
   directoryName: string;

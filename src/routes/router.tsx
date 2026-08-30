@@ -1,6 +1,7 @@
 import { createBrowserRouter, useParams } from "react-router-dom";
 import { AppLayout } from "../components/AppLayout";
 import { PlaceholderPage } from "../components/PlaceholderPage";
+import { questionBanks } from "../loaders/questionBankLoader";
 
 function BankPlaceholder({ mode }: { mode: "bank" | "quiz" | "favorites" }) {
   const { bankId } = useParams();
@@ -38,7 +39,7 @@ export const router = createBrowserRouter([
         element: (
           <PlaceholderPage
             title="題庫首頁"
-            description="Question Pack loader 將在後續階段實作。"
+            description={`Build-time loader 已載入 **${questionBanks.length}** 套 Question Pack。`}
           />
         ),
       },

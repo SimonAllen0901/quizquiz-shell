@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "demo-bank",
+  "name": "Demo Question Bank",
+  "shortName": "Demo",
+  "description": "用於展示 Quizquiz Shell 題庫資料格式的示範題庫。",
+  "version": "1.0.0",
+  "language": "zh-TW",
+  "files": {
+    "questions": "./questions.json",
+    "introduction": "./introduction.md"
+  }
+}
