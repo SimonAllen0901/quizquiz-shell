@@ -143,3 +143,8 @@ vite.config.ts.timestamp-*
 .vite/
 
 docs/*
+
+# Question Packs
+question-banks/*
+!question-banks/demo-bank/
+!question-banks/demo-bank/**
