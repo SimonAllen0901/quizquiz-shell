@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { Link, NavLink, Outlet } from "react-router-dom";
 
 const navigationItems = [
   { to: "/", label: "題庫" },
@@ -10,12 +10,12 @@ export function AppLayout() {
   return (
     <div className="app-layout">
       <header className="app-header">
-        <a className="brand" href="/">
+        <Link className="brand" to="/">
           Quizquiz Shell
-        </a>
+        </Link>
         <nav aria-label="主選單">
           {navigationItems.map((item) => (
-            <NavLink key={item.to} to={item.to}>
+            <NavLink key={item.to} to={item.to} end={item.to === "/"}>
               {item.label}
             </NavLink>
           ))}
