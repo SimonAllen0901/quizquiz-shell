@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, NavLink, Outlet } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { resolveTheme, type ThemePreference, type ThemeStorage } from "../storage/themeStorage";
 
 const navigationItems = [
@@ -18,6 +18,7 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({ themeStorage }: AppLayoutProps) {
+  const location = useLocation();
   const [themePreference, setThemePreferenceState] = useState(() =>
     themeStorage.getPreference(),
   );
@@ -48,13 +49,15 @@ export function AppLayout({ themeStorage }: AppLayoutProps) {
     setThemePreferenceState(preference);
   }
 
+  const isQuizRoute = /^\/banks\/[^/]+\/quiz\/?$/.test(location.pathname);
+
   return (
-    <div className="app-layout">
+    <div className={isQuizRoute ? "app-layout quiz-mode" : "app-layout"}>
       <header className="app-header">
         <Link className="brand" to="/">
           Quizquiz Shell
         </Link>
-        <nav aria-label="主選單">
+        <nav className="desktop-nav" aria-label="主選單">
           {navigationItems.map((item) => (
             <NavLink key={item.to} to={item.to} end={item.to === "/"}>
               {item.label}
@@ -65,6 +68,13 @@ export function AppLayout({ themeStorage }: AppLayoutProps) {
       <main className="app-main">
         <Outlet context={{ themePreference, setThemePreference } satisfies AppLayoutContext} />
       </main>
+      <nav className="bottom-nav" aria-label="底部主選單">
+        {navigationItems.map((item) => (
+          <NavLink key={item.to} to={item.to} end={item.to === "/"}>
+            {item.label}
+          </NavLink>
+        ))}
+      </nav>
     </div>
   );
 }

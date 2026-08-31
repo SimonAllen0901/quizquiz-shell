@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
+import type { RenderResult } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { QuestionBank } from "../domain/questionBank";
 import { createProgressStorage, PROGRESS_STORAGE_KEY } from "../storage/progressStorage";
 import { createThemeStorage, THEME_STORAGE_KEY } from "../storage/themeStorage";
@@ -50,15 +51,15 @@ function renderRoute(
     memory?: MemoryStorage;
     random?: () => number;
   } = {},
-) {
+): { memory: MemoryStorage; router: ReturnType<typeof createMemoryRouter>; storage: ReturnType<typeof createProgressStorage> } & RenderResult {
   const storage = createProgressStorage(memory, () => "2026-08-30T10:00:00.000Z");
   const themeStorage = createThemeStorage(memory);
   const router = createMemoryRouter(
     createAppRoutes({ banks, storage, themeStorage, random }),
     { initialEntries: [path] },
   );
-  render(<RouterProvider router={router} />);
-  return { memory, router, storage };
+  const view = render(<RouterProvider router={router} />);
+  return { ...view, memory, router, storage };
 }
 
 describe("core routes", () => {
@@ -74,6 +75,15 @@ describe("core routes", () => {
       "href",
       "/banks/test-bank/quiz",
     );
+  });
+
+  it("renders mobile bottom navigation with the main destinations", () => {
+    renderRoute("/");
+
+    const bottomNav = screen.getByRole("navigation", { name: "底部主選單" });
+    expect(within(bottomNav).getByRole("link", { name: "題庫" })).toHaveAttribute("href", "/");
+    expect(within(bottomNav).getByRole("link", { name: "收藏" })).toHaveAttribute("href", "/favorites");
+    expect(within(bottomNav).getByRole("link", { name: "設定" })).toHaveAttribute("href", "/settings");
   });
 
   it("shows the bank introduction and derived progress statistics", () => {
@@ -171,6 +181,18 @@ describe("quiz flow", () => {
 
     expect(screen.getByText("請選出兩個正確答案。")).toBeInTheDocument();
     expect(screen.queryByText("請選出正確的單選答案。")).not.toBeInTheDocument();
+  });
+
+  it("supports selecting an option with Enter for keyboard use", () => {
+    const { container } = renderRoute("/banks/test-bank/quiz");
+
+    expect(container.querySelector(".app-layout")).toHaveClass("quiz-mode");
+
+    const beta = screen.getByRole("radio", { name: /Beta/ });
+    fireEvent.keyDown(beta, { key: "Enter" });
+
+    expect(beta).toBeChecked();
+    expect(screen.getByRole("button", { name: "送出答案" })).toBeEnabled();
   });
 
   it("shows completed state on entry and restart keeps favorites while clearing results", () => {
@@ -318,13 +340,14 @@ describe("settings flow", () => {
         answerResults: {},
       },
     }));
-    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(true).mockReturnValueOnce(true);
-
     const { storage } = renderRoute("/settings", { banks: [bank, secondBank], memory });
     fireEvent.change(screen.getByLabelText("選擇題庫"), { target: { value: "second" } });
     fireEvent.click(screen.getByRole("button", { name: "重置所選題庫" }));
+    expect(screen.getByRole("dialog", { name: "重置所選題庫？" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "確認重置範圍" }));
+    expect(screen.getByRole("dialog", { name: "再次確認重置題庫" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "永久重置題庫" }));
 
-    expect(confirm).toHaveBeenCalledTimes(2);
     expect(storage.getAppProgress()).toEqual({
       "test-bank": {
         seenQuestionIds: ["q-single"],
@@ -333,11 +356,9 @@ describe("settings flow", () => {
       },
     });
     expect(screen.getByRole("status")).toHaveTextContent("已重置「第二題庫」。");
-
-    confirm.mockRestore();
   });
 
-  it("does not reset a bank when the second confirmation is rejected", () => {
+  it("does not reset a bank when the reset dialog is canceled at the second step", () => {
     const memory = new MemoryStorage();
     memory.setItem(PROGRESS_STORAGE_KEY, JSON.stringify({
       "test-bank": {
@@ -346,19 +367,17 @@ describe("settings flow", () => {
         answerResults: {},
       },
     }));
-    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(true).mockReturnValueOnce(false);
-
     const { storage } = renderRoute("/settings", { memory });
     fireEvent.click(screen.getByRole("button", { name: "重置所選題庫" }));
+    fireEvent.click(screen.getByRole("button", { name: "確認重置範圍" }));
+    fireEvent.click(screen.getByRole("button", { name: "取消" }));
 
-    expect(confirm).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(storage.getBankProgress("test-bank")).toEqual({
       seenQuestionIds: ["q-single"],
       favoriteQuestionIds: ["q-single"],
       answerResults: {},
     });
-
-    confirm.mockRestore();
   });
 
   it("resets all progress data only after two confirmations", () => {
@@ -371,16 +390,15 @@ describe("settings flow", () => {
       },
     }));
     memory.setItem(THEME_STORAGE_KEY, "dark");
-    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(true).mockReturnValueOnce(true);
-
     const { storage } = renderRoute("/settings", { memory });
     fireEvent.click(screen.getByRole("button", { name: "重置全部資料" }));
+    expect(screen.getByRole("dialog", { name: "重置全部資料？" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "確認重置範圍" }));
+    expect(screen.getByRole("dialog", { name: "再次確認重置全部資料" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "永久重置全部資料" }));
 
-    expect(confirm).toHaveBeenCalledTimes(2);
     expect(storage.getAppProgress()).toEqual({});
     expect(memory.getItem(THEME_STORAGE_KEY)).toBe("dark");
     expect(screen.getByRole("status")).toHaveTextContent("已重置全部資料。");
-
-    confirm.mockRestore();
   });
 });

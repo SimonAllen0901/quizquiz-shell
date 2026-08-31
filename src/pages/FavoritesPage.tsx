@@ -174,14 +174,12 @@ export function FavoriteQuestionDetailPage({ banks, storage }: FavoritesPageProp
             {correctOptions.map((option) => `${option.id}. ${option.text}`).join("、")}
           </p>
         </section>
-        <section className="explanation-panel">
-          <h2>詳解</h2>
-          {question.explanation?.trim() ? (
+        {question.explanation?.trim() && (
+          <section className="explanation-panel">
+            <h2>詳解</h2>
             <div className="markdown-body"><MarkdownContent>{question.explanation}</MarkdownContent></div>
-          ) : (
-            <p className="muted">這題沒有提供詳解。</p>
-          )}
-        </section>
+          </section>
+        )}
       </article>
     </section>
   );

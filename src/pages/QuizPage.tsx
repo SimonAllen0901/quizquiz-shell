@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 import { EmptyState } from "../components/EmptyState";
 import { InlineMarkdownContent, MarkdownContent } from "../components/MarkdownContent";
@@ -61,6 +61,7 @@ function QuizSession({ bank, storage, random }: QuizSessionProps) {
   }, [allQuestionIds, bank.id, storage]);
 
   const currentQuestion = bank.questions.find((question) => question.id === currentQuestionId);
+  const canSubmit = Boolean(currentQuestion && selectedOptionIds.length > 0 && !submitted);
 
   function toggleOption(optionId: string) {
     if (!currentQuestion || submitted) return;
@@ -124,6 +125,30 @@ function QuizSession({ bank, storage, random }: QuizSessionProps) {
     setProgress(readProgress());
   }
 
+  function handleOptionKeyDown(event: KeyboardEvent<HTMLInputElement>, optionId: string) {
+    if (event.key !== "Enter") return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    toggleOption(optionId);
+  }
+
+  function handleActionKeyDown(event: KeyboardEvent<HTMLElement>) {
+    if (event.key !== "Enter") return;
+    if (event.target instanceof HTMLButtonElement || event.target instanceof HTMLAnchorElement) return;
+
+    if (submitted) {
+      event.preventDefault();
+      showNextQuestion();
+      return;
+    }
+
+    if (canSubmit) {
+      event.preventDefault();
+      submitAnswer();
+    }
+  }
+
   if (!currentQuestion) {
     return <CompletedState bank={bank} progress={progress} onRestart={restart} />;
   }
@@ -132,7 +157,7 @@ function QuizSession({ bank, storage, random }: QuizSessionProps) {
   const nextWillComplete = progress.seenQuestionIds.length >= bank.questions.length;
 
   return (
-    <section>
+    <section className="quiz-page" onKeyDown={handleActionKeyDown}>
       <div className="quiz-topbar">
         <Link className="back-link" to={`/banks/${bank.id}`}>← {bank.shortName ?? bank.name}</Link>
         <span>{progress.seenQuestionIds.length} / {bank.questions.length}</span>
@@ -170,6 +195,7 @@ function QuizSession({ bank, storage, random }: QuizSessionProps) {
                     checked={selected}
                     disabled={submitted}
                     onChange={() => toggleOption(option.id)}
+                    onKeyDown={(event) => handleOptionKeyDown(event, option.id)}
                   />
                   <strong>{option.id}</strong>
                   <span className="option-text"><InlineMarkdownContent>{option.text}</InlineMarkdownContent></span>
@@ -205,7 +231,7 @@ function QuizSession({ bank, storage, random }: QuizSessionProps) {
               <button
                 className="button primary"
                 type="button"
-                disabled={selectedOptionIds.length === 0}
+                disabled={!canSubmit}
                 onClick={submitAnswer}
               >
                 送出答案

@@ -19,6 +19,7 @@
   --color-border-strong: #cbd5e1;
   --color-header-border: #e5e7eb;
   --color-primary: #4f46e5;
+  --color-on-primary: #fff;
   --color-primary-hover: #a5b4fc;
   --color-primary-soft: #eef2ff;
   --color-success: #16a34a;
@@ -30,8 +31,11 @@
   --color-danger-soft: #fef2f2;
   --color-danger-feedback: #fee2e2;
   --color-code-bg: #f1f5f9;
+  --color-overlay: rgb(255 255 255 / 0.92);
   --shadow-card: 0 8px 28px rgb(15 23 42 / 0.05);
   --shadow-row: 0 8px 28px rgb(15 23 42 / 0.04);
+  --shadow-sticky: 0 -10px 24px rgb(15 23 42 / 0.08);
+  --motion-fast: 160ms ease;
 }
 
 :root[data-theme="dark"] {
@@ -47,6 +51,7 @@
   --color-border-strong: #475569;
   --color-header-border: #263244;
   --color-primary: #818cf8;
+  --color-on-primary: #111827;
   --color-primary-hover: #a5b4fc;
   --color-primary-soft: #27305a;
   --color-success: #4ade80;
@@ -58,8 +63,10 @@
   --color-danger-soft: #3a1c22;
   --color-danger-feedback: #451f27;
   --color-code-bg: #0f172a;
+  --color-overlay: rgb(21 27 42 / 0.94);
   --shadow-card: 0 8px 28px rgb(0 0 0 / 0.24);
   --shadow-row: 0 8px 28px rgb(0 0 0 / 0.2);
+  --shadow-sticky: 0 -10px 24px rgb(0 0 0 / 0.28);
 }
 
 * {
@@ -114,6 +121,10 @@ a {
 
 .app-header nav a.active {
   color: var(--color-primary);
+}
+
+.bottom-nav {
+  display: none;
 }
 
 .brand {
@@ -222,10 +233,19 @@ h2 {
   font-weight: 750;
   line-height: 1.2;
   text-decoration: none;
+  transition:
+    border-color var(--motion-fast),
+    background-color var(--motion-fast),
+    color var(--motion-fast),
+    transform var(--motion-fast);
+}
+
+.button:active {
+  transform: translateY(1px);
 }
 
 .button.primary {
-  color: var(--color-surface);
+  color: var(--color-on-primary);
   border-color: var(--color-primary);
   background: var(--color-primary);
 }
@@ -259,6 +279,14 @@ h2 {
   text-decoration: none;
 }
 
+a:focus-visible,
+.question-option:focus-within,
+.favorite-question-row:focus-visible,
+.bottom-nav a:focus-visible {
+  outline: 3px solid var(--color-primary-hover);
+  outline-offset: 3px;
+}
+
 .bank-detail-grid,
 .quiz-layout {
   display: grid;
@@ -270,6 +298,10 @@ h2 {
 .content-card,
 .quiz-card {
   padding: clamp(24px, 5vw, 40px);
+}
+
+.quiz-layout .quiz-card {
+  max-width: 760px;
 }
 
 .side-card {
@@ -392,10 +424,20 @@ h2 {
   border-radius: 14px;
   cursor: pointer;
   background: var(--color-surface);
+  transition:
+    border-color var(--motion-fast),
+    background-color var(--motion-fast),
+    transform var(--motion-fast);
 }
 
-.question-option:hover {
-  border-color: var(--color-primary-hover);
+@media (hover: hover) {
+  .question-option:hover {
+    border-color: var(--color-primary-hover);
+  }
+}
+
+.question-option:active {
+  transform: translateY(1px);
 }
 
 .question-option.selected {
@@ -450,6 +492,11 @@ h2 {
   background: var(--color-danger-feedback);
 }
 
+.result-feedback,
+.explanation-panel {
+  animation: soft-enter 180ms ease-out;
+}
+
 .explanation-panel {
   margin-top: 20px;
   padding: 20px;
@@ -479,10 +526,19 @@ h2 {
   background: var(--color-surface);
   text-decoration: none;
   box-shadow: var(--shadow-row);
+  transition:
+    border-color var(--motion-fast),
+    transform var(--motion-fast);
 }
 
-.favorite-question-row:hover {
-  border-color: var(--color-primary-hover);
+@media (hover: hover) {
+  .favorite-question-row:hover {
+    border-color: var(--color-primary-hover);
+  }
+}
+
+.favorite-question-row:active {
+  transform: translateY(1px);
 }
 
 .favorite-question-id {
@@ -552,7 +608,7 @@ h2 {
 }
 
 .segmented-control input:checked + span {
-  color: var(--color-surface);
+  color: var(--color-on-primary);
   background: var(--color-primary);
 }
 
@@ -596,11 +652,56 @@ select:focus-visible {
   font-weight: 800;
 }
 
+.modal-backdrop {
+  position: fixed;
+  z-index: 50;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(15 23 42 / 0.48);
+}
+
+.reset-dialog {
+  width: min(100%, 420px);
+  max-height: calc(100dvh - 40px);
+  overflow: auto;
+  padding: 24px;
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.reset-dialog h2 {
+  margin-bottom: 10px;
+}
+
+.dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
 .quiz-actions {
   justify-content: space-between;
   margin-top: 28px;
   padding-top: 20px;
   border-top: 1px solid var(--color-border);
+}
+
+@keyframes soft-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .completed-card,
@@ -655,16 +756,60 @@ select:focus-visible {
 
 @media (max-width: 767px) {
   .app-header {
-    align-items: flex-start;
-    flex-direction: column;
+    padding: calc(14px + env(safe-area-inset-top)) 16px 14px;
+  }
+
+  .app-header .desktop-nav {
+    display: none;
+  }
+
+  .bottom-nav {
+    position: fixed;
+    z-index: 20;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--color-border);
+    background: var(--color-overlay);
+    box-shadow: var(--shadow-sticky);
+    backdrop-filter: blur(16px);
+  }
+
+  .bottom-nav a {
+    display: flex;
+    min-height: 48px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    color: var(--color-text-muted);
+    font-weight: 800;
+    text-decoration: none;
+  }
+
+  .bottom-nav a.active {
+    color: var(--color-on-primary);
+    background: var(--color-primary);
+  }
+
+  .quiz-mode .bottom-nav {
+    display: none;
+  }
+
+  .app-main {
+    width: min(100% - 24px, 1120px);
+    padding-block: 28px calc(84px + env(safe-area-inset-bottom));
+  }
+
+  .quiz-mode .app-main {
+    padding-bottom: calc(112px + env(safe-area-inset-bottom));
   }
 
   .placeholder-page {
     padding: 24px;
-  }
-
-  .app-main {
-    padding-block: 28px;
   }
 
   .bank-detail-grid,
@@ -695,8 +840,14 @@ select:focus-visible {
     margin: 0;
   }
 
+  .quiz-card {
+    padding: 22px 18px;
+  }
+
   .question-option {
     grid-template-columns: auto auto minmax(0, 1fr);
+    min-height: 56px;
+    padding: 14px;
   }
 
   .favorite-question-row {
@@ -714,5 +865,66 @@ select:focus-visible {
 
   .quiz-actions .button {
     flex: 1;
+    min-height: 54px;
+  }
+
+  .quiz-page .quiz-actions {
+    position: fixed;
+    z-index: 30;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    margin: 0;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--color-border);
+    background: var(--color-overlay);
+    box-shadow: var(--shadow-sticky);
+    backdrop-filter: blur(16px);
+  }
+
+  .segmented-control {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .modal-backdrop {
+    align-items: end;
+    padding: 16px 12px calc(16px + env(safe-area-inset-bottom));
+  }
+
+  .reset-dialog {
+    max-height: calc(100dvh - 32px - env(safe-area-inset-bottom));
+  }
+
+  .dialog-actions .button {
+    flex: 1;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-main {
+    width: min(100% - 64px, 1200px);
+  }
+
+  .bank-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .button:active,
+  .question-option:active,
+  .favorite-question-row:active {
+    transform: none;
   }
 }
