@@ -1,8 +1,9 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { QuestionBank } from "../domain/questionBank";
 import { createProgressStorage, PROGRESS_STORAGE_KEY } from "../storage/progressStorage";
+import { createThemeStorage, THEME_STORAGE_KEY } from "../storage/themeStorage";
 import { MemoryStorage } from "../test/memoryStorage";
 import { createAppRoutes } from "./router";
 
@@ -51,8 +52,9 @@ function renderRoute(
   } = {},
 ) {
   const storage = createProgressStorage(memory, () => "2026-08-30T10:00:00.000Z");
+  const themeStorage = createThemeStorage(memory);
   const router = createMemoryRouter(
-    createAppRoutes({ banks, storage, random }),
+    createAppRoutes({ banks, storage, themeStorage, random }),
     { initialEntries: [path] },
   );
   render(<RouterProvider router={router} />);
@@ -198,5 +200,187 @@ describe("quiz flow", () => {
       favoriteQuestionIds: ["q-single"],
       answerResults: {},
     });
+  });
+});
+
+describe("favorites flow", () => {
+  it("shows only banks that have favorite questions", () => {
+    const secondBank: QuestionBank = { ...bank, id: "second", name: "第二題庫" };
+    const memory = new MemoryStorage();
+    memory.setItem(PROGRESS_STORAGE_KEY, JSON.stringify({
+      "test-bank": {
+        seenQuestionIds: [],
+        favoriteQuestionIds: ["q-single"],
+        answerResults: {},
+      },
+      second: {
+        seenQuestionIds: [],
+        favoriteQuestionIds: [],
+        answerResults: {},
+      },
+    }));
+
+    renderRoute("/favorites", { banks: [bank, secondBank], memory });
+
+    expect(screen.getByRole("heading", { name: "我的收藏" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "測試題庫" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "第二題庫" })).not.toBeInTheDocument();
+    expect(screen.getByText("已收藏 1 題")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "查看收藏" })).toHaveAttribute(
+      "href",
+      "/favorites/test-bank",
+    );
+  });
+
+  it("shows favorite question ids and previews without exposing answers", () => {
+    const memory = new MemoryStorage();
+    memory.setItem(PROGRESS_STORAGE_KEY, JSON.stringify({
+      "test-bank": {
+        seenQuestionIds: [],
+        favoriteQuestionIds: ["q-single"],
+        answerResults: {},
+      },
+    }));
+
+    renderRoute("/favorites/test-bank", { memory });
+
+    expect(screen.getByRole("heading", { name: "測試題庫" })).toBeInTheDocument();
+    expect(screen.getByText("q-single")).toBeInTheDocument();
+    expect(screen.getByText("請選出正確的單選答案。")).toBeInTheDocument();
+    expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
+    expect(screen.queryByText("Beta")).not.toBeInTheDocument();
+    expect(screen.queryByText("正確答案")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /q-single/ })).toHaveAttribute(
+      "href",
+      "/favorites/test-bank/q-single",
+    );
+  });
+
+  it("shows favorite question detail with options, correct answer, and explanation", () => {
+    const memory = new MemoryStorage();
+    memory.setItem(PROGRESS_STORAGE_KEY, JSON.stringify({
+      "test-bank": {
+        seenQuestionIds: [],
+        favoriteQuestionIds: ["q-single"],
+        answerResults: {},
+      },
+    }));
+
+    renderRoute("/favorites/test-bank/q-single", { memory });
+
+    expect(screen.getByText("請選出正確的單選答案。")).toBeInTheDocument();
+    expect(screen.getByText("Alpha")).toBeInTheDocument();
+    expect(screen.getByText("Beta")).toBeInTheDocument();
+    expect(screen.getAllByText("正確答案").length).toBeGreaterThan(0);
+    expect(screen.getByText("A. Alpha")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "詳解" })).toBeInTheDocument();
+    expect(screen.getByText("正確答案", { selector: "strong" })).toBeInTheDocument();
+  });
+
+  it("does not show an unfavorited question detail", () => {
+    renderRoute("/favorites/test-bank/q-single");
+
+    expect(screen.getByRole("heading", { name: "找不到收藏題目" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "返回題庫收藏" })).toHaveAttribute(
+      "href",
+      "/favorites/test-bank",
+    );
+  });
+});
+
+describe("settings flow", () => {
+  it("persists theme preference and applies it immediately", () => {
+    const { memory } = renderRoute("/settings");
+
+    expect(screen.getByRole("heading", { name: "設定" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "System" })).toBeChecked();
+    expect(document.documentElement.dataset.theme).toBe("light");
+
+    fireEvent.click(screen.getByRole("radio", { name: "Dark" }));
+
+    expect(screen.getByRole("radio", { name: "Dark" })).toBeChecked();
+    expect(memory.getItem(THEME_STORAGE_KEY)).toBe("dark");
+    expect(document.documentElement.dataset.theme).toBe("dark");
+  });
+
+  it("resets the selected bank only after two confirmations", () => {
+    const secondBank: QuestionBank = { ...bank, id: "second", name: "第二題庫" };
+    const memory = new MemoryStorage();
+    memory.setItem(PROGRESS_STORAGE_KEY, JSON.stringify({
+      "test-bank": {
+        seenQuestionIds: ["q-single"],
+        favoriteQuestionIds: ["q-single"],
+        answerResults: {},
+      },
+      second: {
+        seenQuestionIds: ["q-multiple"],
+        favoriteQuestionIds: ["q-multiple"],
+        answerResults: {},
+      },
+    }));
+    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(true).mockReturnValueOnce(true);
+
+    const { storage } = renderRoute("/settings", { banks: [bank, secondBank], memory });
+    fireEvent.change(screen.getByLabelText("選擇題庫"), { target: { value: "second" } });
+    fireEvent.click(screen.getByRole("button", { name: "重置所選題庫" }));
+
+    expect(confirm).toHaveBeenCalledTimes(2);
+    expect(storage.getAppProgress()).toEqual({
+      "test-bank": {
+        seenQuestionIds: ["q-single"],
+        favoriteQuestionIds: ["q-single"],
+        answerResults: {},
+      },
+    });
+    expect(screen.getByRole("status")).toHaveTextContent("已重置「第二題庫」。");
+
+    confirm.mockRestore();
+  });
+
+  it("does not reset a bank when the second confirmation is rejected", () => {
+    const memory = new MemoryStorage();
+    memory.setItem(PROGRESS_STORAGE_KEY, JSON.stringify({
+      "test-bank": {
+        seenQuestionIds: ["q-single"],
+        favoriteQuestionIds: ["q-single"],
+        answerResults: {},
+      },
+    }));
+    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(true).mockReturnValueOnce(false);
+
+    const { storage } = renderRoute("/settings", { memory });
+    fireEvent.click(screen.getByRole("button", { name: "重置所選題庫" }));
+
+    expect(confirm).toHaveBeenCalledTimes(2);
+    expect(storage.getBankProgress("test-bank")).toEqual({
+      seenQuestionIds: ["q-single"],
+      favoriteQuestionIds: ["q-single"],
+      answerResults: {},
+    });
+
+    confirm.mockRestore();
+  });
+
+  it("resets all progress data only after two confirmations", () => {
+    const memory = new MemoryStorage();
+    memory.setItem(PROGRESS_STORAGE_KEY, JSON.stringify({
+      "test-bank": {
+        seenQuestionIds: ["q-single"],
+        favoriteQuestionIds: ["q-single"],
+        answerResults: {},
+      },
+    }));
+    memory.setItem(THEME_STORAGE_KEY, "dark");
+    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(true).mockReturnValueOnce(true);
+
+    const { storage } = renderRoute("/settings", { memory });
+    fireEvent.click(screen.getByRole("button", { name: "重置全部資料" }));
+
+    expect(confirm).toHaveBeenCalledTimes(2);
+    expect(storage.getAppProgress()).toEqual({});
+    expect(memory.getItem(THEME_STORAGE_KEY)).toBe("dark");
+    expect(screen.getByRole("status")).toHaveTextContent("已重置全部資料。");
+
+    confirm.mockRestore();
   });
 });
