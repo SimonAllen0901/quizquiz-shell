@@ -745,6 +745,19 @@ select:focus-visible {
   margin: 0 0 12px;
 }
 
+.route-loading {
+  max-width: 720px;
+  margin-inline: auto;
+  padding: 32px;
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  color: var(--color-text-soft);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  font-weight: 800;
+  text-align: center;
+}
+
 .eyebrow {
   margin: 0 0 8px;
   color: var(--color-text-muted);
