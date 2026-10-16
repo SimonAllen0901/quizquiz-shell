@@ -17,7 +17,7 @@ const themeOptions: Array<{ value: ThemePreference; label: string }> = [
 ];
 
 type PendingReset =
-  | { type: "bank"; bank: QuestionBank; step: 1 | 2 }
+  | { type: "bank" | "favorites"; bank: QuestionBank; step: 1 | 2 }
   | { type: "all"; step: 1 | 2 };
 
 export function SettingsPage({ banks, storage }: SettingsPageProps) {
@@ -30,11 +30,11 @@ export function SettingsPage({ banks, storage }: SettingsPageProps) {
     setThemePreference(event.target.value as ThemePreference);
   }
 
-  function requestSelectedBankReset() {
+  function requestSelectedBankReset(type: "bank" | "favorites") {
     const selectedBank = banks.find((bank) => bank.id === selectedBankId);
     if (!selectedBank) return;
 
-    setPendingReset({ type: "bank", bank: selectedBank, step: 1 });
+    setPendingReset({ type, bank: selectedBank, step: 1 });
   }
 
   function requestAllDataReset() {
@@ -50,7 +50,10 @@ export function SettingsPage({ banks, storage }: SettingsPageProps) {
 
     if (pendingReset.type === "bank") {
       storage.resetBank(pendingReset.bank.id);
-      setStatusMessage(`已重置「${pendingReset.bank.name}」。`);
+      setStatusMessage(`已清除「${pendingReset.bank.name}」的進度，收藏已保留。`);
+    } else if (pendingReset.type === "favorites") {
+      storage.clearBankFavorites(pendingReset.bank.id);
+      setStatusMessage(`已清除「${pendingReset.bank.name}」的收藏，進度已保留。`);
     } else {
       storage.resetAll();
       setStatusMessage("已重置全部資料。");
@@ -108,9 +111,17 @@ export function SettingsPage({ banks, storage }: SettingsPageProps) {
               className="button secondary"
               type="button"
               disabled={banks.length === 0}
-              onClick={requestSelectedBankReset}
+              onClick={() => requestSelectedBankReset("bank")}
             >
-              重置所選題庫
+              清除所選題庫進度
+            </button>
+            <button
+              className="button secondary"
+              type="button"
+              disabled={banks.length === 0}
+              onClick={() => requestSelectedBankReset("favorites")}
+            >
+              清除所選題庫收藏
             </button>
             <button className="button danger" type="button" onClick={requestAllDataReset}>
               重置全部資料
@@ -171,11 +182,21 @@ function ResetConfirmationDialog({
 function getResetDialogCopy(reset: PendingReset) {
   if (reset.type === "bank") {
     return {
-      title: reset.step === 1 ? "重置所選題庫？" : "再次確認重置題庫",
+      title: reset.step === 1 ? "清除所選題庫進度？" : "再次確認清除進度",
       body: reset.step === 1
-        ? `將清除「${reset.bank.name}」的作答進度、答題結果與收藏。其他題庫不受影響。`
-        : "這個動作無法復原。確認後會立即清除所選題庫資料。",
-      action: reset.step === 1 ? "確認重置範圍" : "永久重置題庫",
+        ? `將清除「${reset.bank.name}」的作答進度與答題結果，收藏會保留。其他題庫不受影響。`
+        : `這個動作無法復原。確認後會立即清除「${reset.bank.name}」的進度與答題結果，保留收藏。`,
+      action: reset.step === 1 ? "確認清除進度範圍" : "永久清除進度",
+    };
+  }
+
+  if (reset.type === "favorites") {
+    return {
+      title: reset.step === 1 ? "清除所選題庫收藏？" : "再次確認清除收藏",
+      body: reset.step === 1
+        ? `將清除「${reset.bank.name}」的所有收藏，作答進度與答題結果會保留。其他題庫不受影響。`
+        : `這個動作無法復原。確認後會立即清除「${reset.bank.name}」的收藏，保留進度與答題結果。`,
+      action: reset.step === 1 ? "確認清除收藏範圍" : "永久清除收藏",
     };
   }
 

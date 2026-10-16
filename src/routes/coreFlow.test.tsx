@@ -325,7 +325,7 @@ describe("settings flow", () => {
     expect(document.documentElement.dataset.theme).toBe("dark");
   });
 
-  it("resets the selected bank only after two confirmations", async () => {
+  it.each(["進度", "收藏"] as const)("clears selected bank %s only after two confirmations", async (scope) => {
     const secondBank: QuestionBank = { ...bank, id: "second", name: "第二題庫" };
     const memory = new MemoryStorage();
     memory.setItem(PROGRESS_STORAGE_KEY, JSON.stringify({
@@ -337,28 +337,47 @@ describe("settings flow", () => {
       second: {
         seenQuestionIds: ["q-multiple"],
         favoriteQuestionIds: ["q-multiple"],
-        answerResults: {},
+        answerResults: {
+          "q-multiple": {
+            questionId: "q-multiple",
+            selectedOptionIds: ["A", "C"],
+            correct: true,
+            submittedAt: "2026-08-30T09:00:00.000Z",
+          },
+        },
       },
     }));
     const { storage } = renderRoute("/settings", { banks: [bank, secondBank], memory });
+    const before = storage.getAppProgress();
     fireEvent.change(await screen.findByLabelText("選擇題庫"), { target: { value: "second" } });
-    fireEvent.click(await screen.findByRole("button", { name: "重置所選題庫" }));
-    expect(screen.getByRole("dialog", { name: "重置所選題庫？" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "確認重置範圍" }));
-    expect(screen.getByRole("dialog", { name: "再次確認重置題庫" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "永久重置題庫" }));
+    fireEvent.click(screen.getByRole("button", { name: `清除所選題庫${scope}` }));
+    expect(screen.getByRole("dialog", { name: `清除所選題庫${scope}？` })).toHaveTextContent("第二題庫");
+    expect(storage.getAppProgress()).toEqual(before);
+    fireEvent.click(screen.getByRole("button", { name: `確認清除${scope}範圍` }));
+    expect(screen.getByRole("dialog", { name: `再次確認清除${scope}` })).toHaveTextContent("第二題庫");
+    expect(storage.getAppProgress()).toEqual(before);
+    fireEvent.click(screen.getByRole("button", { name: `永久清除${scope}` }));
 
     expect(storage.getAppProgress()).toEqual({
-      "test-bank": {
-        seenQuestionIds: ["q-single"],
-        favoriteQuestionIds: ["q-single"],
-        answerResults: {},
-      },
+      ...before,
+      second: scope === "進度"
+        ? { seenQuestionIds: [], favoriteQuestionIds: ["q-multiple"], answerResults: {} }
+        : { ...before.second, favoriteQuestionIds: [] },
     });
-    expect(screen.getByRole("status")).toHaveTextContent("已重置「第二題庫」。");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      scope === "進度"
+        ? "已清除「第二題庫」的進度，收藏已保留。"
+        : "已清除「第二題庫」的收藏，進度已保留。",
+    );
   });
 
-  it("does not reset a bank when the reset dialog is canceled at the second step", async () => {
+  it.each([
+    { scope: "進度", step: 1 },
+    { scope: "進度", step: 2 },
+    { scope: "收藏", step: 1 },
+    { scope: "收藏", step: 2 },
+  ])("keeps data when clearing $scope is canceled at step $step", async ({ scope, step }) => {
     const memory = new MemoryStorage();
     memory.setItem(PROGRESS_STORAGE_KEY, JSON.stringify({
       "test-bank": {
@@ -368,16 +387,28 @@ describe("settings flow", () => {
       },
     }));
     const { storage } = renderRoute("/settings", { memory });
-    fireEvent.click(await screen.findByRole("button", { name: "重置所選題庫" }));
-    fireEvent.click(screen.getByRole("button", { name: "確認重置範圍" }));
+    const before = memory.getItem(PROGRESS_STORAGE_KEY);
+    fireEvent.click(await screen.findByRole("button", { name: `清除所選題庫${scope}` }));
+    if (step === 2) {
+      fireEvent.click(screen.getByRole("button", { name: `確認清除${scope}範圍` }));
+    }
     fireEvent.click(screen.getByRole("button", { name: "取消" }));
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(memory.getItem(PROGRESS_STORAGE_KEY)).toBe(before);
     expect(storage.getBankProgress("test-bank")).toEqual({
       seenQuestionIds: ["q-single"],
       favoriteQuestionIds: ["q-single"],
       answerResults: {},
     });
+  });
+
+  it("disables both selected-bank actions when no banks are loaded", async () => {
+    renderRoute("/settings", { banks: [] });
+
+    expect(await screen.findByLabelText("選擇題庫")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "清除所選題庫進度" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "清除所選題庫收藏" })).toBeDisabled();
   });
 
   it("resets all progress data only after two confirmations", async () => {

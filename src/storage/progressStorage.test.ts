@@ -229,19 +229,48 @@ describe("progressStorage operations", () => {
     });
   });
 
-  it("resetBank removes only the selected bank", () => {
+  it.each(["first", "second"])("resetBank preserves favorites and isolates %s", (bankId) => {
     const storage = new MemoryStorage();
-    seed(storage, {
-      first: { seenQuestionIds: ["q1"], favoriteQuestionIds: [], answerResults: {} },
-      second: { seenQuestionIds: ["q2"], favoriteQuestionIds: [], answerResults: {} },
+    const progressStorage = createProgressStorage(storage, () => NOW);
+    for (const id of ["first", "second"]) {
+      progressStorage.recordAnswerResult(id, "q1", ["a"], true);
+      progressStorage.toggleFavorite(id, "q1");
+      progressStorage.toggleFavorite(id, "q2");
+    }
+    const before = readStored(storage);
+
+    progressStorage.resetBank(bankId);
+
+    expect(readStored(storage)).toEqual({
+      ...before,
+      [bankId]: { seenQuestionIds: [], favoriteQuestionIds: ["q1", "q2"], answerResults: {} },
     });
+  });
+
+  it.each(["first", "second"])("clearBankFavorites preserves progress and isolates %s", (bankId) => {
+    const storage = new MemoryStorage();
+    const progressStorage = createProgressStorage(storage, () => NOW);
+    for (const id of ["first", "second"]) {
+      progressStorage.recordAnswerResult(id, "q1", ["a"], false);
+      progressStorage.toggleFavorite(id, "q1");
+    }
+    const before = readStored(storage);
+
+    progressStorage.clearBankFavorites(bankId);
+
+    expect(readStored(storage)).toEqual({
+      ...before,
+      [bankId]: { ...before[bankId], favoriteQuestionIds: [] },
+    });
+  });
+
+  it.each(["resetBank", "clearBankFavorites"] as const)("%s is a no-op for a missing bank", (operation) => {
+    const storage = new MemoryStorage();
     const progressStorage = createProgressStorage(storage);
 
-    progressStorage.resetBank("first");
+    progressStorage[operation]("missing");
 
-    expect(progressStorage.getAppProgress()).toEqual({
-      second: { seenQuestionIds: ["q2"], favoriteQuestionIds: [], answerResults: {} },
-    });
+    expect(storage.getItem(PROGRESS_STORAGE_KEY)).toBeNull();
   });
 
   it("resetAll removes only the progress storage key", () => {

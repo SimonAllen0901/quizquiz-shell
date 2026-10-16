@@ -36,6 +36,7 @@ export interface ProgressStorage {
   ): QuestionBankProgress;
   restartBank(bankId: string): void;
   resetBank(bankId: string): void;
+  clearBankFavorites(bankId: string): void;
   resetAll(): void;
 }
 
@@ -62,6 +63,19 @@ export function createProgressStorage(
 
   function getBankProgress(bankId: string): QuestionBankProgress {
     return getAppProgress()[bankId] ?? createEmptyBankProgress();
+  }
+
+  function resetBank(bankId: string) {
+    const progress = getAppProgress();
+    const current = progress[bankId];
+    if (!current) return;
+
+    progress[bankId] = {
+      seenQuestionIds: [],
+      favoriteQuestionIds: [...current.favoriteQuestionIds],
+      answerResults: {},
+    };
+    saveAppProgress(progress);
   }
 
   return {
@@ -117,19 +131,14 @@ export function createProgressStorage(
 
       return cleaned;
     },
-    restartBank(bankId) {
+    restartBank: resetBank,
+    resetBank,
+    clearBankFavorites(bankId) {
       const progress = getAppProgress();
-      const current = progress[bankId] ?? createEmptyBankProgress();
-      progress[bankId] = {
-        seenQuestionIds: [],
-        favoriteQuestionIds: [...current.favoriteQuestionIds],
-        answerResults: {},
-      };
-      saveAppProgress(progress);
-    },
-    resetBank(bankId) {
-      const progress = getAppProgress();
-      delete progress[bankId];
+      const current = progress[bankId];
+      if (!current) return;
+
+      progress[bankId] = { ...current, favoriteQuestionIds: [] };
       saveAppProgress(progress);
     },
     resetAll() {
