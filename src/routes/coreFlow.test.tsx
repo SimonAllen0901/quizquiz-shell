@@ -129,6 +129,33 @@ describe("core routes", () => {
 });
 
 describe("quiz flow", () => {
+  it("keeps question type and selection count clear through selection and question changes", async () => {
+    renderRoute("/banks/test-bank/quiz");
+
+    expect(await screen.findByRole("group", { name: "請選擇一個答案" })).toBeInTheDocument();
+    expect(screen.getByText("單選題・已選 0 項")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: /Alpha/ }));
+    fireEvent.click(screen.getByRole("radio", { name: /Beta/ }));
+    expect(screen.getByRole("radio", { name: /Alpha/ })).not.toBeChecked();
+    expect(screen.getByText("單選題・已選 1 項")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "送出答案" }));
+    expect(screen.queryByText("單選題・已選 1 項")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "下一題" }));
+
+    expect(screen.getByRole("group", { name: "可選擇多個答案，請選出所有符合的選項" })).toBeInTheDocument();
+    expect(screen.getByText("複選題・已選 0 項")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("checkbox", { name: /Apple/ }));
+    expect(screen.getByText("複選題・已選 1 項")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "送出答案" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("checkbox", { name: /Cherry/ }));
+    expect(screen.getByText("複選題・已選 2 項")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("checkbox", { name: /Apple/ }));
+    expect(screen.getByText("複選題・已選 1 項")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("checkbox", { name: /Cherry/ }));
+    expect(screen.getByText("複選題・已選 0 項")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "送出答案" })).toBeDisabled();
+  });
+
   it("submits single and multiple answers, persists results, and reaches completion", async () => {
     const { storage } = renderRoute("/banks/test-bank/quiz");
 

@@ -155,6 +155,10 @@ function QuizSession({ bank, storage, random }: QuizSessionProps) {
 
   const isFavorite = progress.favoriteQuestionIds.includes(currentQuestion.id);
   const nextWillComplete = progress.seenQuestionIds.length >= bank.questions.length;
+  const questionTypeLabel = currentQuestion.type === "single" ? "單選題" : "複選題";
+  const selectionHint = currentQuestion.type === "single"
+    ? "請選擇一個答案"
+    : "可選擇多個答案，請選出所有符合的選項";
 
   return (
     <section className="quiz-page" onKeyDown={handleActionKeyDown}>
@@ -165,14 +169,14 @@ function QuizSession({ bank, storage, random }: QuizSessionProps) {
       <div className="quiz-layout">
         <article className="quiz-card">
           <div className="question-meta">
-            <span>{currentQuestion.type === "single" ? "單選題" : "複選題"}</span>
-            <span>{currentQuestion.id}</span>
+            <span className={`question-type-badge ${currentQuestion.type}`}>{questionTypeLabel}</span>
+            <span className="question-id">{currentQuestion.id}</span>
           </div>
           <div className="question-content markdown-body">
             <MarkdownContent>{currentQuestion.question}</MarkdownContent>
           </div>
           <fieldset className="option-list">
-            <legend className="sr-only">請選擇答案</legend>
+            <legend className={`selection-hint ${currentQuestion.type}`}>{selectionHint}</legend>
             {currentQuestion.options.map((option) => {
               const selected = selectedOptionIds.includes(option.id);
               const isCorrectOption = currentQuestion.correctAnswers.includes(option.id);
@@ -220,6 +224,11 @@ function QuizSession({ bank, storage, random }: QuizSessionProps) {
           )}
 
           <div className="quiz-actions">
+            {!submitted && (
+              <p className={`selection-summary ${currentQuestion.type}`} aria-live="polite" aria-atomic="true">
+                {questionTypeLabel}・已選 {selectedOptionIds.length} 項
+              </p>
+            )}
             <button className="button secondary" type="button" onClick={toggleFavorite}>
               {isFavorite ? "★ 已收藏" : "☆ 收藏"}
             </button>
